@@ -1,0 +1,14 @@
+---
+- hosts: localhost
+  connection: local
+  become: false
+  tasks:
+    - name: Send start status
+      uri:
+        url: http://bastion.33cc33cc.do417.dev.nextcle.com/api/provision/v1/report
+        method: POST
+        body_format: json
+        body:
+          status: "allocating infrastructure"
+        status_code:
+          - 200

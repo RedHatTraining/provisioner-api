@@ -1,0 +1,48 @@
+---
+- hosts: bastions
+  become: yes
+  tasks:
+    - name: Create application folder
+      file:
+        name: "/opt/status/src"
+        state: directory
+    - name: Copy application files
+      copy:
+        dest: "/opt/status/src/{{ item }}"
+        src: "../{{ item }}"
+        owner: "{{ ansible_user }}"
+        mode: 0644
+      with_items:
+        - requirements.txt
+        - server.py
+        - wsgi.py
+    - name: Create folder
+      file:
+        name: "{{item}}"
+        state: directory
+        owner: "{{ansible_user}}"
+        group: nginx
+      with_items:
+        - /opt/status/run
+        - /opt/status/log
+    - name: Fix selinux context for nginx access
+      shell: |
+        semanage fcontext -a -t httpd_sys_rw_content_t "{{item}}(/.*)?"
+        restorecon -R -v "{{item}}"
+      with_items:
+        - /opt/status/run
+        - /opt/status/log
+    - name: Install python virtualenv
+      pip:
+        name: virtualenv
+    - name: Install python application as a service
+      include_role:
+        name: Stouts.wsgi
+      vars:
+        python_enabled: false
+        wsgi_group: nginx
+        wsgi_applications:
+        - name: status
+          server: gunicorn
+          module: wsgi
+          pip_requirements: requirements.txt
